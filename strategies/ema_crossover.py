@@ -1,20 +1,42 @@
 import pandas as pd
 
-def ema_crossover_strategy(df):
+class EMA_Crossover:
     """
-    Estrategia simple EMA 20/50.
-    df debe contener columnas: ['open', 'high', 'low', 'close'].
-    Devuelve un DataFrame con columnas:
-        entry: señal de entrada long
-        exit: señal de salida
+    Estrategia simple de cruces de medias exponenciales (EMA).
+    Genera señales de entrada/salida tipo long (no short).
     """
 
-    df = df.copy()
+    def __init__(self, short=20, long=50):
+        """
+        Parámetros:
+        short : int  -> periodo de la EMA corta
+        long  : int  -> periodo de la EMA larga
+        """
+        self.short = short
+        self.long = long
 
-    df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
-    df["ema50"] = df["close"].ewm(span=50, adjust=False).mean()
+    def _ema(self, series: pd.Series, span: int):
+        return series.ewm(span=span, adjust=False).mean()
 
-    df["entry"] = (df["ema20"] > df["ema50"]) & (df["ema20"].shift() <= df["ema50"].shift())
-    df["exit"]  = (df["ema20"] < df["ema50"]) & (df["ema20"].shift() >= df["ema50"].shift())
+    def generate(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Devuelve un DataFrame con dos columnas: 'entry' y 'exit'
+        Cada una booleana indicando cuándo entrar o salir.
+        """
+        data = df.copy()
 
-    return df[["entry","exit"]]
+        # Calcular EMAs
+        data["ema_short"] = self._ema(data["close"], self.short)
+        data["ema_long"] = self._ema(data["close"], self.long)
+
+        # Señales:
+        # Entrada: ema_short cruza por encima de ema_long
+        data["entry"] = (data["ema_short"] > data["ema_long"]) & \
+                        (data["ema_short"].shift() <= data["ema_long"].shift())
+
+        # Salida: ema_short cruza por debajo de ema_long
+        data["exit"] = (data["ema_short"] < data["ema_long"]) & \
+                       (data["ema_short"].shift() >= data["ema_long"].shift())
+
+        # Mantener solo columnas útiles
+        return data[["entry", "exit", "ema_short", "ema_long"]]
