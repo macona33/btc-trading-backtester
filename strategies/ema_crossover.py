@@ -1,25 +1,15 @@
-from utils.indicators import ema
+# strategies/ema_crossover.py
+import pandas as pd
+from backtester.strategy_base import StrategyBase
 
-class EMACrossover:
-    """
-    Estrategia simple EMA 20/50.
-    El backtester esperará que tenga un método generate_signals(df).
-    """
+class Strategy(StrategyBase):
+    def name(self):
+        return "EMA_20_50"
 
-    def __init__(self, fast=20, slow=50):
-        self.fast = fast
-        self.slow = slow
-
-    def generate_signals(self, df):
+    def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-
-        df['ema_fast'] = ema(df['close'], self.fast)
-        df['ema_slow'] = ema(df['close'], self.slow)
-
-        df['entry'] = (df['ema_fast'] > df['ema_slow']) & \
-                      (df['ema_fast'].shift() <= df['ema_slow'].shift())
-
-        df['exit'] = (df['ema_fast'] < df['ema_slow']) & \
-                     (df['ema_fast'].shift() >= df['ema_slow'].shift())
-
-        return df[['entry', 'exit']]
+        df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
+        df['ema50'] = df['close'].ewm(span=50, adjust=False).mean()
+        df['entry'] = (df['ema20'] > df['ema50']) & (df['ema20'].shift() <= df['ema50'].shift())
+        df['exit'] = (df['ema20'] < df['ema50']) & (df['ema20'].shift() >= df['ema50'].shift())
+        return df[['entry','exit']]
